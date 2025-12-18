@@ -9,9 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.954.0",
+    "@aws-sdk/s3-request-presigner": "^3.954.0",
+    "@supabase/supabase-js": "^2.88.0",
+    "@types/crypto-js": "^4.2.2",
+    "@types/uuid": "^10.0.0",
+    "crypto-js": "^4.2.0",
     "next": "16.0.10",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "sharp": "^0.34.5",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
