@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
     try {
       const { assetId } = await request.clone().json();
       if (assetId) {
+        const supabase = getSupabase();
         await supabase
           .from('assets')
           .update({ status: 'failed' })
