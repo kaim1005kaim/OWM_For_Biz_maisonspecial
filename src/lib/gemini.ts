@@ -126,7 +126,7 @@ function extractTextFromResponse(response: GeminiResponse): string {
 /**
  * Extract image data from Gemini response
  */
-function extractImageFromResponse(response: GeminiResponse): { mimeType: string; data: string } | null {
+function extractImageFromResponse(response: GeminiResponse): { base64: string; mimeType: string } | null {
   if (response.error) {
     throw new Error(`Gemini error: ${response.error.message}`);
   }
@@ -138,8 +138,8 @@ function extractImageFromResponse(response: GeminiResponse): { mimeType: string;
     return null;
   }
   return {
+    base64: imagePart.inlineData.data,
     mimeType: imagePart.inlineData.mimeType,
-    data: imagePart.inlineData.data,
   };
 }
 
