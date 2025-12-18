@@ -8,7 +8,7 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 // Model IDs
 const TEXT_MODEL = 'gemini-2.0-flash';
-const IMAGE_MODEL = 'gemini-2.0-flash-exp-image-generation';
+const IMAGE_MODEL = 'gemini-2.0-flash-preview-image-generation'; // Updated for higher quota
 
 interface GeminiContent {
   role: 'user' | 'model';
@@ -277,6 +277,11 @@ ${count}個の異なるバリエーションを生成してください。色・
   // Generate images one by one (Gemini generates one at a time)
   for (let i = 0; i < count; i++) {
     try {
+      // Add delay between requests to avoid rate limiting (10 req/min limit)
+      if (i > 0) {
+        await sleep(7000); // 7 seconds between requests
+      }
+
       const response = await callGeminiAPI(
         IMAGE_MODEL,
         [{ role: 'user', parts }],
@@ -292,6 +297,10 @@ ${count}個の異なるバリエーションを生成してください。色・
       }
     } catch (error) {
       console.error(`Error generating image ${i + 1}:`, error);
+      // If rate limited, wait longer before next attempt
+      if (error instanceof Error && error.message.includes('429')) {
+        await sleep(60000); // Wait 60 seconds on rate limit
+      }
     }
   }
 
