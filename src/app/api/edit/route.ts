@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const r2Key = generateR2Key(workspaceSlug, 'gen', childAssetId, 'png');
 
     // Upload to R2
-    const publicUrl = await uploadBase64ToR2(r2Key, editedImage.data, editedImage.mimeType);
+    const publicUrl = await uploadBase64ToR2(r2Key, editedImage.base64, editedImage.mimeType);
 
     // Create child asset record
     const { error: assetError } = await supabase
