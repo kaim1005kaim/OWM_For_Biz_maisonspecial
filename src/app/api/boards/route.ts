@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase, getWorkspaceBySlug } from '@/lib/supabase';
+import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import { getPublicUrl } from '@/lib/r2';
 
 export const maxDuration = 30;
@@ -8,6 +8,7 @@ export const maxDuration = 30;
 // GET - List boards or get single board with assets
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const workspaceSlug = searchParams.get('workspaceSlug');
     const boardId = searchParams.get('boardId');
@@ -112,6 +113,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new board
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { workspaceSlug, name } = await request.json();
 
     if (!workspaceSlug || !name) {
@@ -158,6 +160,7 @@ export async function POST(request: NextRequest) {
 // PUT - Add/remove asset from board
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { boardId, assetId, action, position } = await request.json();
 
     if (!boardId || !assetId || !action) {
@@ -238,6 +241,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete board
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const boardId = searchParams.get('boardId');
 

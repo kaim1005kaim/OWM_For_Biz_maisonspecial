@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { getObjectAsBase64 } from '@/lib/r2';
 import { annotateImage } from '@/lib/gemini';
 
@@ -7,6 +7,7 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { assetId } = await request.json();
 
     if (!assetId) {

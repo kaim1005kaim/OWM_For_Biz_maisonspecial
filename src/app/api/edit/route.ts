@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase, getWorkspaceBySlug } from '@/lib/supabase';
+import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import { getObjectAsBase64, uploadBase64ToR2, generateR2Key, getPublicUrl } from '@/lib/r2';
 import { editImage } from '@/lib/gemini';
 
@@ -16,6 +16,7 @@ interface EditRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body: EditRequest = await request.json();
     const { workspaceSlug, parentAssetId, instruction } = body;
 

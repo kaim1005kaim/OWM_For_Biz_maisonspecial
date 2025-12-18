@@ -1,37 +1,37 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-let _supabase: SupabaseClient | null = null;
+let _client: SupabaseClient | null = null;
 
-// Lazy initialization to avoid build-time errors
-function getSupabase(): SupabaseClient {
-  if (!_supabase) {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-
-    _supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-  }
-  return _supabase;
+function mustGetEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`[supabase] Missing env: ${name}`);
+  return v;
 }
 
-// Export as getter
-export const supabase = new Proxy({} as SupabaseClient, {
-  get(_, prop) {
-    return (getSupabase() as Record<string, unknown>)[prop as string];
-  },
-});
+/**
+ * サーバー側で使う（Route Handler / Server Action / RSC）
+ * ※ import 時点で createClient しないのがポイント
+ */
+export function getSupabase(): SupabaseClient {
+  if (_client) return _client;
+
+  const url = mustGetEnv('SUPABASE_URL');
+  const serviceKey = mustGetEnv('SUPABASE_SERVICE_ROLE_KEY');
+
+  _client = createClient(url, serviceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  return _client;
+}
 
 // Helper to get workspace by slug
 export async function getWorkspaceBySlug(slug: string) {
-  const { data, error } = await getSupabase()
+  const supabase = getSupabase();
+  const { data, error } = await supabase
     .from('workspaces')
     .select('*')
     .eq('slug', slug)
@@ -43,9 +43,10 @@ export async function getWorkspaceBySlug(slug: string) {
 
 // Helper to get or create demo workspace
 export async function getOrCreateDemoWorkspace() {
+  const supabase = getSupabase();
   const slug = process.env.DEMO_WORKSPACE_SLUG || 'maison_demo';
 
-  const { data: existing } = await getSupabase()
+  const { data: existing } = await supabase
     .from('workspaces')
     .select('*')
     .eq('slug', slug)
@@ -53,7 +54,7 @@ export async function getOrCreateDemoWorkspace() {
 
   if (existing) return existing;
 
-  const { data: created, error } = await getSupabase()
+  const { data: created, error } = await supabase
     .from('workspaces')
     .insert({
       slug,

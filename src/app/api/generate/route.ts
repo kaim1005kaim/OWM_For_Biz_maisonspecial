@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase, getWorkspaceBySlug } from '@/lib/supabase';
+import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import { getObjectAsBase64, uploadBase64ToR2, generateR2Key, getPublicUrl } from '@/lib/r2';
 import { generateDesigns, generateInspiration } from '@/lib/gemini';
 
@@ -17,6 +17,7 @@ interface GenerateRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body: GenerateRequest = await request.json();
     const { workspaceSlug, boardId, prompt, count = 12 } = body;
 

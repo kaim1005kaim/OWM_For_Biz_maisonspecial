@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getWorkspaceBySlug } from '@/lib/supabase';
+import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import { getPublicUrl } from '@/lib/r2';
 import type { LibraryFilters } from '@/types';
 
@@ -7,6 +7,7 @@ export const maxDuration = 30;
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const workspaceSlug = searchParams.get('workspaceSlug');
     const source = searchParams.get('source'); // seed, user_upload
@@ -91,6 +92,7 @@ export async function GET(request: NextRequest) {
 // Get filter options
 export async function OPTIONS(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const workspaceSlug = searchParams.get('workspaceSlug');
 

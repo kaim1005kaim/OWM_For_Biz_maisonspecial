@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase, getWorkspaceBySlug } from '@/lib/supabase';
+import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import { uploadBufferToR2, generateR2Key, getPublicUrl } from '@/lib/r2';
 import { calculateSHA256, getImageMetadata, createThumbnail, getMimeType } from '@/lib/image';
 import type { AssetSource } from '@/types';
@@ -9,6 +9,7 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const workspaceSlug = formData.get('workspaceSlug') as string;
