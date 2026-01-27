@@ -249,6 +249,43 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'boardId is required' }, { status: 400 });
     }
 
+    // Delete child records first to avoid foreign key constraint violations
+    const { error: itemsError } = await supabase
+      .from('board_items')
+      .delete()
+      .eq('board_id', boardId);
+
+    if (itemsError) {
+      console.error('Board items delete error:', itemsError);
+    }
+
+    // Get generation IDs to delete their outputs first
+    const { data: gens } = await supabase
+      .from('generations')
+      .select('id')
+      .eq('board_id', boardId);
+
+    if (gens && gens.length > 0) {
+      const genIds = gens.map((g) => g.id);
+      const { error: outputsError } = await supabase
+        .from('generation_outputs')
+        .delete()
+        .in('generation_id', genIds);
+
+      if (outputsError) {
+        console.error('Generation outputs delete error:', outputsError);
+      }
+    }
+
+    const { error: gensError } = await supabase
+      .from('generations')
+      .delete()
+      .eq('board_id', boardId);
+
+    if (gensError) {
+      console.error('Generations delete error:', gensError);
+    }
+
     const { error } = await supabase
       .from('boards')
       .delete()
