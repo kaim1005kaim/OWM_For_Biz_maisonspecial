@@ -281,11 +281,11 @@ export default function GeneratePage() {
 
         setEditInstruction('');
       } else {
-        alert(data.error || 'REMIX に失敗しました');
+        alert(data.error || '再編集に失敗しました');
       }
     } catch (error) {
       console.error('Edit error:', error);
-      alert('REMIX に失敗しました');
+      alert('再編集に失敗しました');
     } finally {
       setEditing(false);
     }
@@ -628,7 +628,7 @@ export default function GeneratePage() {
                           }}
                           className="btn-glow px-4 py-1.5 text-xs w-32 text-center"
                         >
-                          REMIX
+                          画像を再編集
                         </button>
                       </div>
                     </div>
@@ -660,7 +660,7 @@ export default function GeneratePage() {
           <div className="absolute right-0 top-0 h-full w-[500px] bg-[var(--background)] border-l border-[var(--text-inactive)] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-[var(--text-inactive)]">
-              <h2 className="text-sm tracking-[2px] uppercase">REMIX</h2>
+              <h2 className="text-sm tracking-[2px] uppercase">画像を再編集</h2>
               <button
                 onClick={handleCloseEdit}
                 className="text-[var(--text-secondary)] hover:text-[var(--foreground)]"
@@ -685,7 +685,7 @@ export default function GeneratePage() {
                 {editing && (
                   <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
                     <div className="spinner mb-4" />
-                    <p className="text-sm breathing">REMIX 適用中...</p>
+                    <p className="text-sm breathing">再編集を適用中...</p>
                   </div>
                 )}
               </div>
@@ -711,14 +711,14 @@ export default function GeneratePage() {
                   disabled={!editInstruction.trim() || editing}
                   className="w-full btn-primary py-2 text-xs tracking-[1px] uppercase disabled:opacity-50"
                 >
-                  REMIX を適用
+                  再編集を適用
                 </button>
               </div>
 
               {/* Quick Edit Presets */}
               <div className="glass-card p-4">
                 <h3 className="text-xs tracking-[2px] uppercase text-[var(--text-secondary)] mb-3">
-                  クイック REMIX
+                  クイック再編集
                 </h3>
                 <p className="text-xs text-[var(--text-inactive)] mb-2">
                   ワンタップで素早く変更を適用できます
@@ -741,7 +741,7 @@ export default function GeneratePage() {
               {editHistory.length > 0 && (
                 <div className="glass-card p-4">
                   <h3 className="text-xs tracking-[2px] uppercase text-[var(--text-secondary)] mb-3">
-                    REMIX 履歴 ({editHistory.length})
+                    再編集履歴 ({editHistory.length})
                   </h3>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {editHistory.map((item, index) => (
@@ -757,7 +757,7 @@ export default function GeneratePage() {
                         <div className="w-10 h-10 relative flex-shrink-0 bg-[var(--background)]">
                           <Image
                             src={item.url}
-                            alt={`REMIX ${index + 1}`}
+                            alt={`再編集 ${index + 1}`}
                             fill
                             className="object-cover"
                             sizes="40px"

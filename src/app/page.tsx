@@ -94,7 +94,7 @@ export default function Home() {
             <span>→</span>
             <span className="flex items-center gap-2">
               <span className="w-6 h-6 border border-current flex items-center justify-center">4</span>
-              REMIX
+              再編集
             </span>
           </div>
         </div>
