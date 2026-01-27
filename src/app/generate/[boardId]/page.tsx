@@ -224,10 +224,6 @@ export default function GeneratePage() {
     );
   };
 
-  const handleRefine = (assetId: string) => {
-    router.push(`/refine/${assetId}`);
-  };
-
   // Open edit drawer (REMIX)
   const handleOpenEdit = (assetId: string, url: string) => {
     setEditingAsset({ assetId, url });
@@ -633,15 +629,6 @@ export default function GeneratePage() {
                           className="btn-glow px-4 py-1.5 text-xs w-32 text-center"
                         >
                           REMIX
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRefine(output.assetId);
-                          }}
-                          className="btn-glow px-4 py-1.5 text-xs w-32 text-center"
-                        >
-                          リファイン
                         </button>
                       </div>
                     </div>
