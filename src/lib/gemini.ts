@@ -8,7 +8,7 @@ const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 // Model IDs
 const TEXT_MODEL = 'gemini-2.0-flash';
-const IMAGE_MODEL = 'gemini-2.5-flash-image'; // Image generation capable model
+const IMAGE_MODEL = 'gemini-3-pro-image-preview'; // High-quality image generation model
 
 interface GeminiContent {
   role: 'user' | 'model';
@@ -244,8 +244,14 @@ JSONのみを返してください。`;
 export async function generateDesigns(
   referenceImages: { base64: string; mimeType: string }[],
   prompt: string,
-  count: number = 1
+  count: number = 1,
+  options?: { category?: string; categoryDescription?: string }
 ): Promise<{ base64: string; mimeType: string }[]> {
+  const categoryBlock = options?.category
+    ? `\n[GARMENT CATEGORY]\nCategory: ${options.category}${options.categoryDescription ? `\nDescription: ${options.categoryDescription}` : ''}
+Generate designs specifically for this garment category. The output must clearly be this type of garment.\n`
+    : '';
+
   const systemPrompt = `あなたはファッションデザインのAIアシスタントです。
 参照画像の要素を抽出して「新規デザイン案」を生成してください。
 
@@ -256,11 +262,29 @@ export async function generateDesigns(
 - 背景はシンプルな白またはライトグレー
 - モデルは全身が見えるように配置
 - テキスト、ラベル、透かしを含めない
+${categoryBlock}
+[DESIGN DIVERSITY]
+Each design should explore a DIFFERENT design approach. Vary silhouettes, construction techniques, fabric choices, and color palettes.
+Consider these techniques: clean minimal, structured tailoring, soft draping, deconstructed, volume play, layered composition, precision sportif, neo-classical.
+Use specific construction terminology: princess seam, French seam, raglan, saddle shoulder, set-in sleeve, concealed placket, stand collar, shawl lapel, welt pocket, paper-bag waist.
+Explore diverse aesthetics: quiet luxury, dark romanticism, Mediterranean ease, Japanese minimalism, power tailoring, soft futurism, artisanal craft.
+
+[COMPLETE OUTFIT STYLING]
+- Show a FULL coordinated look, not just the main garment
+- Include appropriate innerwear visible at neckline
+- Show stylish footwear that matches the outfit's vibe
+- Include accessories where appropriate: belt, bag, scarf, watch, jewelry
 
 ユーザーの指示:
 ${prompt}
 
-${count}個の異なるバリエーションを生成してください。色・素材・ディテール・シルエットを変えて多様性を出してください。`;
+ユニークなバリエーションを1つ生成してください。色・素材・ディテール・シルエットを変えて多様性を出してください。
+
+[NEGATIVE]
+- NO logos, brand names, monograms, or brand identifiers
+- NO text, labels, watermarks, or typography
+- NO 3D render look, illustration, or painting style
+- Must look like a real fashion photograph`;
 
   const parts: GeminiPart[] = [
     { text: systemPrompt },
@@ -392,6 +416,69 @@ ${prompt}
     {
       temperature: 0.8 + (index * 0.05),
       responseModalities: ['IMAGE', 'TEXT'],
+    }
+  );
+
+  return extractImageFromResponse(response);
+}
+
+/**
+ * Generate an image with a reference image (for hero shots and spec sheets)
+ * Uses the reference as design DNA while applying the provided prompt for composition
+ */
+export async function generateWithReference(
+  prompt: string,
+  referenceBase64: string,
+  referenceMimeType: string = 'image/jpeg',
+  aspectRatio?: string
+): Promise<{ base64: string; mimeType: string } | null> {
+  const cleanBase64 = referenceBase64.replace(/^data:image\/\w+;base64,/, '');
+
+  const response = await callGeminiAPI(
+    IMAGE_MODEL,
+    [
+      {
+        role: 'user',
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType: referenceMimeType,
+              data: cleanBase64,
+            },
+          },
+        ],
+      },
+    ],
+    {
+      temperature: 0.8,
+      responseModalities: ['IMAGE', 'TEXT'],
+      ...(aspectRatio && { aspectRatio }),
+    }
+  );
+
+  return extractImageFromResponse(response);
+}
+
+/**
+ * Generate an image from text prompt only (no reference image)
+ */
+export async function generateImageFromPrompt(
+  prompt: string,
+  aspectRatio?: string
+): Promise<{ base64: string; mimeType: string } | null> {
+  const response = await callGeminiAPI(
+    IMAGE_MODEL,
+    [
+      {
+        role: 'user',
+        parts: [{ text: prompt }],
+      },
+    ],
+    {
+      temperature: 0.8,
+      responseModalities: ['IMAGE', 'TEXT'],
+      ...(aspectRatio && { aspectRatio }),
     }
   );
 

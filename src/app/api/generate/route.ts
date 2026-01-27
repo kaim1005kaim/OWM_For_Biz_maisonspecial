@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
-import { getObjectAsBase64, uploadBase64ToR2, generateR2Key, getPublicUrl } from '@/lib/r2';
+import { getObjectAsBase64, uploadBase64ToR2, generateR2Key } from '@/lib/r2';
 import { generateDesigns, generateInspiration } from '@/lib/gemini';
+import { GARMENT_CATEGORY_DESCRIPTIONS, type GarmentCategory } from '@/types';
 
 export const maxDuration = 300; // 5 minutes for batch generation
 
@@ -13,13 +14,14 @@ interface GenerateRequest {
   count: 4 | 8 | 12;
   aspectRatio?: string;
   imageSize?: '2K' | '4K';
+  category?: GarmentCategory;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase();
     const body: GenerateRequest = await request.json();
-    const { workspaceSlug, boardId, prompt, count = 4 } = body;
+    const { workspaceSlug, boardId, prompt, count = 4, category } = body;
 
     if (!workspaceSlug || !boardId || !prompt) {
       return NextResponse.json(
@@ -97,11 +99,12 @@ export async function POST(request: NextRequest) {
         workspace_id: workspace.id,
         board_id: boardId,
         prompt,
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3-pro-image-preview',
         config: {
           count,
           aspectRatio: body.aspectRatio || '4:5',
           imageSize: body.imageSize || '2K',
+          category: category || undefined,
         },
       });
 
@@ -127,10 +130,12 @@ export async function POST(request: NextRequest) {
     }[] = [];
 
     try {
+      const categoryDescription = category ? GARMENT_CATEGORY_DESCRIPTIONS[category] : undefined;
       const generatedImages = await generateDesigns(
         referenceImages,
         `${prompt}\n\n参考インスピレーション:\n${inspirationText}`,
-        actualCount
+        actualCount,
+        category ? { category, categoryDescription } : undefined
       );
 
       // Save each generated image

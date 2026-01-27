@@ -112,6 +112,45 @@ export interface EditWithAssets extends Edit {
   child_asset?: Asset;
 }
 
+// Garment categories (MD)
+export type GarmentCategory =
+  | 'coat'
+  | 'blouson'
+  | 'jacket'
+  | 'vest'
+  | 'shirt'
+  | 'knit'
+  | 'pants'
+  | 'skirt'
+  | 'onepiece';
+
+export const GARMENT_CATEGORY_LABELS: Record<GarmentCategory, string> = {
+  coat: 'コート',
+  blouson: 'ブルゾン',
+  jacket: 'ジャケット',
+  vest: 'ベスト',
+  shirt: 'シャツ',
+  knit: 'ニット',
+  pants: 'パンツ',
+  skirt: 'スカート',
+  onepiece: 'ワンピース',
+};
+
+export const GARMENT_CATEGORY_DESCRIPTIONS: Record<GarmentCategory, string> = {
+  coat: 'Long outerwear (overcoat, trench coat, duffle coat, chester coat). Mid-thigh to ankle length.',
+  blouson: 'Short outerwear (bomber jacket, MA-1, blouson, windbreaker). Waist to hip length with elastic/ribbed hem.',
+  jacket: 'Tailored or structured outerwear (blazer, tailored jacket, safari jacket). Hip length.',
+  vest: 'Sleeveless outerwear or layering piece (gilet, vest, waistcoat). Shows innerwear sleeves.',
+  shirt: 'Button-front or pullover top (dress shirt, blouse, overshirt). Collar and cuffs visible.',
+  knit: 'Knitted top (sweater, cardigan, turtleneck, pullover). Visible knit texture.',
+  pants: 'Lower body (trousers, wide-leg pants, cargo pants, joggers). Full leg visible.',
+  skirt: 'Lower body (midi skirt, maxi skirt, mini skirt, pleated skirt). Show movement and drape.',
+  onepiece: 'Full-body garment (dress, jumpsuit, romper). Head-to-toe single piece.',
+};
+
+// View style for garment spec sheets
+export type ViewStyle = 'ghost' | 'flatlay';
+
 // API Request/Response types
 export interface UploadRequest {
   workspaceSlug: string;
@@ -139,9 +178,29 @@ export interface GenerateRequest {
   workspaceSlug: string;
   boardId: string;
   prompt: string;
-  count: 12 | 24 | 48;
+  count: 4 | 8 | 12;
   aspectRatio: string;
   imageSize: '2K' | '4K';
+  category?: GarmentCategory;
+}
+
+export interface GenerateViewsRequest {
+  workspaceSlug: string;
+  assetId: string;
+  viewStyle: ViewStyle;
+}
+
+export interface GenerateViewsResponse {
+  heroAssetId: string;
+  heroUrl: string;
+  garmentViews: {
+    frontAssetId: string;
+    frontUrl: string;
+    sideAssetId: string;
+    sideUrl: string;
+    backAssetId: string;
+    backUrl: string;
+  };
 }
 
 export interface EditRequest {

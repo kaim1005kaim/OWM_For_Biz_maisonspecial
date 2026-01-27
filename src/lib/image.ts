@@ -117,6 +117,47 @@ export async function getMimeType(buffer: Buffer): Promise<string> {
 }
 
 /**
+ * Split a 16:9 triptych image into 3 equal vertical panels (front, side/detail, back)
+ * Returns 3 buffers in order: left, center, right
+ */
+export async function splitTriptych(
+  buffer: Buffer,
+  targetHeight?: number
+): Promise<{ front: Buffer; center: Buffer; back: Buffer }> {
+  const metadata = await sharp(buffer).metadata();
+  const width = metadata.width || 0;
+  const height = metadata.height || 0;
+
+  const panelWidth = Math.floor(width / 3);
+
+  const extractPanel = async (left: number): Promise<Buffer> => {
+    let pipeline = sharp(buffer).extract({
+      left,
+      top: 0,
+      width: panelWidth,
+      height,
+    });
+
+    if (targetHeight) {
+      pipeline = pipeline.resize(null, targetHeight, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+    }
+
+    return pipeline.jpeg({ quality: 92 }).toBuffer();
+  };
+
+  const [front, center, back] = await Promise.all([
+    extractPanel(0),
+    extractPanel(panelWidth),
+    extractPanel(panelWidth * 2),
+  ]);
+
+  return { front, center, back };
+}
+
+/**
  * Compress image for API calls (max 1MB, max 1024px width)
  */
 export async function compressForAPI(
