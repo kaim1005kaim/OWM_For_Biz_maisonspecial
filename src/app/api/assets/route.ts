@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const silhouette = searchParams.get('silhouette');
     const material = searchParams.get('material');
     const mood = searchParams.get('mood');
-    const limit = parseInt(searchParams.get('limit') || '50');
+    const limit = parseInt(searchParams.get('limit') || '200');
     const offset = parseInt(searchParams.get('offset') || '0');
 
     if (!workspaceSlug) {
