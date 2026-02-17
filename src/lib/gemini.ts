@@ -260,9 +260,16 @@ Generate designs specifically for this garment category. The output must clearly
 - 参照画像からシルエット、素材感、カラーパレット、ディテールを抽象化して活用
 - 出力はファッションルックのプロダクト写真風
 - 背景はシンプルな白またはライトグレー
-- モデルは全身が見えるように配置
 - テキスト、ラベル、透かしを含めない
 ${categoryBlock}
+[COMPOSITION - CRITICAL]
+- MUST show exactly ONE model in FULL-BODY view (head to toe visible)
+- Camera angle: straight-on or slight angle, showing entire body from head to feet
+- NO close-up shots of garments or details
+- NO cropped views (waist-up, torso only, etc.)
+- NO flat lay or product-only shots
+- NO multiple models or collage layouts
+- The model should be centered, standing naturally, with full outfit visible
 [DESIGN DIVERSITY]
 Each design should explore a DIFFERENT design approach. Vary silhouettes, construction techniques, fabric choices, and color palettes.
 Consider these techniques: clean minimal, structured tailoring, soft draping, deconstructed, volume play, layered composition, precision sportif, neo-classical.
@@ -284,7 +291,11 @@ ${prompt}
 - NO logos, brand names, monograms, or brand identifiers
 - NO text, labels, watermarks, or typography
 - NO 3D render look, illustration, or painting style
-- Must look like a real fashion photograph`;
+- NO close-up or detail shots of clothing
+- NO cropped or partial body views
+- NO flat lay or product-only photography
+- NO multiple models or split-screen layouts
+- Must look like a real fashion photograph with single full-body model`;
 
   const parts: GeminiPart[] = [
     { text: systemPrompt },
@@ -387,8 +398,16 @@ export async function generateSingleDesign(
 - 参照画像からシルエット、素材感、カラーパレット、ディテールを抽象化して活用
 - 出力はファッションルックのプロダクト写真風
 - 背景はシンプルな白またはライトグレー
-- モデルは全身が見えるように配置
 - テキスト、ラベル、透かしを含めない
+
+[COMPOSITION - CRITICAL]
+- MUST show exactly ONE model in FULL-BODY view (head to toe visible)
+- Camera angle: straight-on or slight angle, showing entire body from head to feet
+- NO close-up shots of garments or details
+- NO cropped views (waist-up, torso only, etc.)
+- NO flat lay or product-only shots
+- NO multiple models or collage layouts
+- The model should be centered, standing naturally, with full outfit visible
 
 ユーザーの指示:
 ${prompt}
