@@ -3,8 +3,8 @@ import { getSupabase } from '@/lib/supabase';
 import { getPublicUrl } from '@/lib/r2';
 
 /**
- * GET /api/generations?boardId=xxx
- * ボードの生成履歴を取得する
+ * GET /api/generations?boardId=xxx OR ?workspaceSlug=xxx&textileId=xxx
+ * 生成履歴を取得する
  * - generation_outputs + assets を結合
  * - 各出力のdetail view（hero_shot, garment_view）も取得
  */
@@ -13,17 +13,37 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const boardId = searchParams.get('boardId');
+    const workspaceSlug = searchParams.get('workspaceSlug');
+    const textileId = searchParams.get('textileId');
 
-    if (!boardId) {
-      return NextResponse.json({ error: 'boardId is required' }, { status: 400 });
+    // Build query based on parameters
+    let query = supabase
+      .from('generations')
+      .select('id, prompt, config, created_at, workspace_id')
+      .order('created_at', { ascending: false });
+
+    if (boardId) {
+      // MAISON SPECIAL flow: filter by board
+      query = query.eq('board_id', boardId);
+    } else if (workspaceSlug) {
+      // HERALBONY flow: filter by workspace and optionally by textile
+      const { getWorkspaceBySlug } = await import('@/lib/supabase');
+      const workspace = await getWorkspaceBySlug(workspaceSlug);
+      if (!workspace) {
+        return NextResponse.json({ error: 'Workspace not found' }, { status: 404 });
+      }
+      query = query.eq('workspace_id', workspace.id);
+
+      // If textileId specified, filter by config->textileId
+      if (textileId) {
+        query = query.contains('config', { textileId });
+      }
+    } else {
+      return NextResponse.json({ error: 'boardId or workspaceSlug is required' }, { status: 400 });
     }
 
-    // Get all generations for this board
-    const { data: generations, error: genError } = await supabase
-      .from('generations')
-      .select('id, prompt, config, created_at')
-      .eq('board_id', boardId)
-      .order('created_at', { ascending: false });
+    // Get all generations
+    const { data: generations, error: genError } = await query.limit(50);
 
     if (genError) {
       console.error('Generations fetch error:', genError);
@@ -129,6 +149,11 @@ export async function GET(request: NextRequest) {
       prompt: gen.prompt,
       config: gen.config,
       createdAt: gen.created_at,
+      // Heralbony-specific metadata
+      textileId: gen.config?.textileId || null,
+      artistName: gen.config?.artistName || null,
+      textileTitle: gen.config?.textileTitle || null,
+      category: gen.config?.category || null,
       outputs: outputsByGen[gen.id] || [],
     }));
 

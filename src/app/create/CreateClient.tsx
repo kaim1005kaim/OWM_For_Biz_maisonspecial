@@ -34,6 +34,27 @@ interface GeneratedOutput {
   id: string;
   assetId: string;
   url: string;
+  detailViews?: {
+    heroUrl?: string;
+    garmentViews?: {
+      frontUrl: string;
+      sideUrl: string;
+      backUrl: string;
+      viewStyle: string;
+    };
+  } | null;
+}
+
+interface GenerationHistory {
+  id: string;
+  prompt: string;
+  config: Record<string, unknown>;
+  createdAt: string;
+  textileId: string | null;
+  artistName: string | null;
+  textileTitle: string | null;
+  category: string | null;
+  outputs: GeneratedOutput[];
 }
 
 export default function CreateClient() {
@@ -57,6 +78,10 @@ export default function CreateClient() {
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [generatingViews, setGeneratingViews] = useState<string | null>(null);  // assetId being processed
+  const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
+  const [history, setHistory] = useState<GenerationHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [expandedGeneration, setExpandedGeneration] = useState<string | null>(null);
   const hasViewGeneration = useFeature('viewGeneration');
   const aspectRatio = client.generation?.aspectRatio || '9:16';
 
@@ -97,6 +122,30 @@ export default function CreateClient() {
   useEffect(() => {
     fetchTextile();
   }, [fetchTextile]);
+
+  // Fetch generation history
+  const fetchHistory = useCallback(async () => {
+    if (!textileId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/generations?workspaceSlug=${workspaceSlug}&textileId=${textileId}`);
+      const data = await res.json();
+      if (data.success) {
+        setHistory(data.generations || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [textileId, workspaceSlug]);
+
+  // Fetch history when switching to history tab
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory();
+    }
+  }, [activeTab, fetchHistory]);
 
   // Handle template selection
   const handleTemplateSelect = (templateId: string) => {
@@ -149,6 +198,8 @@ export default function CreateClient() {
       if (data.success) {
         setOutputs(data.outputs || []);
         toast.success('デザインを生成しました');
+        // Refresh history in background
+        fetchHistory();
       } else {
         throw new Error(data.error || 'Generation failed');
       }
@@ -211,7 +262,8 @@ export default function CreateClient() {
 
       if (data.success) {
         toast.success('3面図を生成しました');
-        // Stay on page - refine page redirects to library which is wrong for Heralbony
+        // Refresh history to show new 3-view results
+        fetchHistory();
       } else {
         throw new Error(data.error || 'View generation failed');
       }
@@ -356,9 +408,35 @@ export default function CreateClient() {
           </div>
         </div>
 
-        {/* Generated Results */}
-        {outputs.length > 0 && (
-          <div className="mt-12">
+        {/* Tabs */}
+        <div className="mt-12 border-b border-[var(--text-inactive)]/20">
+          <div className="flex gap-8">
+            <button
+              onClick={() => setActiveTab('create')}
+              className={`pb-3 text-sm tracking-[1px] uppercase transition-colors ${
+                activeTab === 'create'
+                  ? 'text-[var(--foreground)] border-b-2 border-[var(--foreground)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              生成結果
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`pb-3 text-sm tracking-[1px] uppercase transition-colors ${
+                activeTab === 'history'
+                  ? 'text-[var(--foreground)] border-b-2 border-[var(--foreground)]'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--foreground)]'
+              }`}
+            >
+              履歴
+            </button>
+          </div>
+        </div>
+
+        {/* Generated Results (Create Tab) */}
+        {activeTab === 'create' && outputs.length > 0 && (
+          <div className="mt-8">
             <h3 className="text-lg tracking-[2px] uppercase mb-6">生成結果</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {outputs.map((output) => (
@@ -418,15 +496,145 @@ export default function CreateClient() {
           </div>
         )}
 
-        {/* Generating Placeholder */}
-        {generating && outputs.length === 0 && (
-          <div className="mt-12">
+        {/* Generating Placeholder (Create Tab) */}
+        {activeTab === 'create' && generating && outputs.length === 0 && (
+          <div className="mt-8">
             <h3 className="text-lg tracking-[2px] uppercase mb-6">生成中...</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="aspect-[9/16] skeleton rounded" />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === 'history' && (
+          <div className="mt-8">
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="spinner" />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-12 text-[var(--text-secondary)]">
+                <p>このテキスタイルの生成履歴はまだありません</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {history.map((gen) => (
+                  <div
+                    key={gen.id}
+                    className="border border-[var(--text-inactive)]/20 rounded-lg overflow-hidden"
+                  >
+                    {/* Generation Header */}
+                    <button
+                      onClick={() => setExpandedGeneration(expandedGeneration === gen.id ? null : gen.id)}
+                      className="w-full p-4 flex items-center justify-between hover:bg-[var(--card-bg)] transition-colors"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="text-left">
+                          <p className="text-sm font-medium">
+                            {gen.category || 'デザイン'} × {gen.outputs.length}枚
+                          </p>
+                          <p className="text-xs text-[var(--text-secondary)] mt-1">
+                            {new Date(gen.createdAt).toLocaleString('ja-JP')}
+                          </p>
+                        </div>
+                      </div>
+                      <svg
+                        className={`w-5 h-5 transition-transform ${expandedGeneration === gen.id ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+
+                    {/* Expanded Content */}
+                    {expandedGeneration === gen.id && (
+                      <div className="p-4 border-t border-[var(--text-inactive)]/20 space-y-4">
+                        {/* Prompt */}
+                        <div>
+                          <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-1">プロンプト</p>
+                          <p className="text-sm">{gen.prompt}</p>
+                        </div>
+
+                        {/* Outputs Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {gen.outputs.map((output) => (
+                            <div key={output.id} className="space-y-2">
+                              {/* Main Output */}
+                              <div
+                                className="relative aspect-[9/16] rounded overflow-hidden cursor-pointer group"
+                                onClick={() => setLightboxUrl(output.url)}
+                              >
+                                <Image
+                                  src={output.url}
+                                  alt="Generated design"
+                                  fill
+                                  className="object-cover"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                              </div>
+
+                              {/* 3-View Results */}
+                              {output.detailViews?.garmentViews && (
+                                <div className="space-y-1">
+                                  <p className="text-xs text-[var(--text-secondary)]">
+                                    3面図 ({output.detailViews.garmentViews.viewStyle === 'ghost' ? 'ゴースト' : '平置き'})
+                                  </p>
+                                  <div className="grid grid-cols-3 gap-1">
+                                    {['frontUrl', 'sideUrl', 'backUrl'].map((view) => {
+                                      const url = output.detailViews?.garmentViews?.[view as 'frontUrl' | 'sideUrl' | 'backUrl'];
+                                      if (!url) return null;
+                                      return (
+                                        <div
+                                          key={view}
+                                          className="relative aspect-square rounded overflow-hidden cursor-pointer"
+                                          onClick={() => setLightboxUrl(url)}
+                                        >
+                                          <Image
+                                            src={url}
+                                            alt={view.replace('Url', '')}
+                                            fill
+                                            className="object-cover"
+                                          />
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Generate 3-View Button (if not yet generated) */}
+                              {hasViewGeneration && !output.detailViews?.garmentViews && (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleGenerateViews(output.assetId, 'ghost')}
+                                    disabled={generatingViews === output.assetId}
+                                    className="flex-1 py-1 text-xs border border-[var(--text-inactive)]/30 rounded hover:border-[var(--foreground)] transition-colors disabled:opacity-50"
+                                  >
+                                    {generatingViews === output.assetId ? '...' : 'ゴースト'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleGenerateViews(output.assetId, 'flatlay')}
+                                    disabled={generatingViews === output.assetId}
+                                    className="flex-1 py-1 text-xs border border-[var(--text-inactive)]/30 rounded hover:border-[var(--foreground)] transition-colors disabled:opacity-50"
+                                  >
+                                    {generatingViews === output.assetId ? '...' : '平置き'}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
