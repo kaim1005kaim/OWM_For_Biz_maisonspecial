@@ -94,11 +94,12 @@ async function replaceImage(item: typeof REPLACEMENTS[0]) {
     await r2Client.send(command);
     console.log(`✓ Uploaded to R2: ${newR2Key}`);
 
-    // Update database with new r2_key
+    // Update database with new r2_key and clear thumb_r2_key
     const { error: updateError } = await supabase
       .from('assets')
       .update({
         r2_key: newR2Key,
+        thumb_r2_key: null, // Clear thumbnail so it uses main image
         mime: 'image/png',
       })
       .eq('id', item.assetId);
