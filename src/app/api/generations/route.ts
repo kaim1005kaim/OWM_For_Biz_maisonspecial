@@ -83,15 +83,15 @@ export async function GET(request: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const outputAssetIds = (outputs || []).map((o: any) => o.asset_id);
 
-    // Fetch detail view assets (hero_shot & garment_view) linked to generated outputs
-    let detailAssets: Record<string, { heroUrl?: string; garmentViews?: { frontUrl: string; sideUrl: string; backUrl: string; viewStyle: string } }> = {};
+    // Fetch garment_view assets linked to generated outputs (3-view: front/side/back)
+    let detailAssets: Record<string, { garmentViews?: { frontUrl: string; sideUrl: string; backUrl: string; viewStyle: string } }> = {};
 
     if (outputAssetIds.length > 0) {
       const { data: detailData } = await supabase
         .from('assets')
         .select('id, r2_key, metadata')
         .in('metadata->>sourceAssetId', outputAssetIds)
-        .in('metadata->>type', ['hero_shot', 'garment_view']);
+        .eq('metadata->>type', 'garment_view');
 
       if (detailData && detailData.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,24 +103,20 @@ export async function GET(request: NextRequest) {
             detailAssets[sourceId] = {};
           }
 
-          if (asset.metadata.type === 'hero_shot') {
-            detailAssets[sourceId].heroUrl = getPublicUrl(asset.r2_key);
-          } else if (asset.metadata.type === 'garment_view') {
-            const viewName = asset.metadata.viewName as string;
-            const viewStyle = asset.metadata.viewStyle as string;
-            if (!detailAssets[sourceId].garmentViews) {
-              detailAssets[sourceId].garmentViews = {
-                frontUrl: '',
-                sideUrl: '',
-                backUrl: '',
-                viewStyle: viewStyle || 'ghost',
-              };
-            }
-            const url = getPublicUrl(asset.r2_key);
-            if (viewName === 'front') detailAssets[sourceId].garmentViews!.frontUrl = url;
-            else if (viewName === 'side') detailAssets[sourceId].garmentViews!.sideUrl = url;
-            else if (viewName === 'back') detailAssets[sourceId].garmentViews!.backUrl = url;
+          const viewName = asset.metadata.viewName as string;
+          const viewStyle = asset.metadata.viewStyle as string;
+          if (!detailAssets[sourceId].garmentViews) {
+            detailAssets[sourceId].garmentViews = {
+              frontUrl: '',
+              sideUrl: '',
+              backUrl: '',
+              viewStyle: viewStyle || 'ghost',
+            };
           }
+          const url = getPublicUrl(asset.r2_key);
+          if (viewName === 'front') detailAssets[sourceId].garmentViews!.frontUrl = url;
+          else if (viewName === 'side') detailAssets[sourceId].garmentViews!.sideUrl = url;
+          else if (viewName === 'back') detailAssets[sourceId].garmentViews!.backUrl = url;
         }
       }
     }

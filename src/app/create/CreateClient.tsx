@@ -30,19 +30,26 @@ interface UploadedFile {
   preview: string;
 }
 
+interface GarmentViews {
+  frontUrl: string;
+  sideUrl: string;
+  backUrl: string;
+  viewStyle: string;
+}
+
 interface GeneratedOutput {
   id: string;
   assetId: string;
-  url: string;
+  url: string;  // This IS the hero (9:16 main artistic shot)
   detailViews?: {
-    heroUrl?: string;
-    garmentViews?: {
-      frontUrl: string;
-      sideUrl: string;
-      backUrl: string;
-      viewStyle: string;
-    };
+    garmentViews?: GarmentViews;
   } | null;
+}
+
+// Image with label for lightbox
+interface LightboxImage {
+  url: string;
+  label: string;  // 'メイン', '正面', '横', '背面'
 }
 
 interface GenerationHistory {
@@ -76,7 +83,7 @@ export default function CreateClient() {
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [outputs, setOutputs] = useState<GeneratedOutput[]>([]);
-  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxImages, setLightboxImages] = useState<LightboxImage[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [generatingViews, setGeneratingViews] = useState<string | null>(null);  // assetId being processed
   const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
@@ -89,7 +96,7 @@ export default function CreateClient() {
   const textileId = searchParams.get('textile');
 
   // Lightbox helpers
-  const openLightbox = (images: string[], startIndex: number = 0) => {
+  const openLightbox = (images: LightboxImage[], startIndex: number = 0) => {
     setLightboxImages(images);
     setLightboxIndex(startIndex);
   };
@@ -107,17 +114,37 @@ export default function CreateClient() {
     setLightboxIndex((prev) => (prev - 1 + lightboxImages.length) % lightboxImages.length);
   };
 
-  // Build image array for output with detail views
-  const getOutputImages = (output: GeneratedOutput): string[] => {
-    const images: string[] = [output.url];
-    if (output.detailViews?.heroUrl) {
-      images.push(output.detailViews.heroUrl);
-    }
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (lightboxImages.length === 0) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          prevImage();
+          break;
+        case 'ArrowRight':
+          nextImage();
+          break;
+        case 'Escape':
+          closeLightbox();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImages.length]);
+
+  // Build labeled image array for output with detail views
+  const getOutputImages = (output: GeneratedOutput): LightboxImage[] => {
+    const images: LightboxImage[] = [{ url: output.url, label: 'メイン' }];
     if (output.detailViews?.garmentViews) {
-      const { frontUrl, sideUrl, backUrl } = output.detailViews.garmentViews;
-      if (frontUrl) images.push(frontUrl);
-      if (sideUrl) images.push(sideUrl);
-      if (backUrl) images.push(backUrl);
+      const { frontUrl, sideUrl, backUrl, viewStyle } = output.detailViews.garmentViews;
+      const styleLabel = viewStyle === 'ghost' ? 'ゴースト' : '平置き';
+      if (frontUrl) images.push({ url: frontUrl, label: `正面 (${styleLabel})` });
+      if (sideUrl) images.push({ url: sideUrl, label: `横 (${styleLabel})` });
+      if (backUrl) images.push({ url: backUrl, label: `背面 (${styleLabel})` });
     }
     return images;
   };
@@ -625,8 +652,8 @@ export default function CreateClient() {
                                     {['frontUrl', 'sideUrl', 'backUrl'].map((view, viewIndex) => {
                                       const url = output.detailViews?.garmentViews?.[view as 'frontUrl' | 'sideUrl' | 'backUrl'];
                                       if (!url) return null;
-                                      // Calculate index: 1 (main) + 1 (hero if exists) + viewIndex
-                                      const imageIndex = 1 + (output.detailViews?.heroUrl ? 1 : 0) + viewIndex;
+                                      // Calculate index: 1 (main) + viewIndex
+                                      const imageIndex = 1 + viewIndex;
                                       return (
                                         <div
                                           key={view}
@@ -685,15 +712,49 @@ export default function CreateClient() {
           className="fixed inset-0 z-50 modal-backdrop flex items-center justify-center p-4"
           onClick={closeLightbox}
         >
-          {/* Close Button */}
-          <button
-            onClick={closeLightbox}
-            className="absolute top-4 right-4 text-white/80 hover:text-white z-10"
-          >
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* Top Bar - Label & Close */}
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-10">
+            {/* Image Label */}
+            <div className="bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full">
+              <span className="text-white text-sm font-medium">
+                {lightboxImages[lightboxIndex]?.label}
+              </span>
+              {lightboxImages.length > 1 && (
+                <span className="text-white/60 text-sm ml-2">
+                  {lightboxIndex + 1} / {lightboxImages.length}
+                </span>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2">
+              {/* Download Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownload(
+                    lightboxImages[lightboxIndex].url,
+                    `design-${lightboxImages[lightboxIndex].label}-${Date.now()}.png`
+                  );
+                }}
+                className="bg-black/60 backdrop-blur-sm p-2 rounded-full text-white/80 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </button>
+
+              {/* Close Button */}
+              <button
+                onClick={closeLightbox}
+                className="bg-black/60 backdrop-blur-sm p-2 rounded-full text-white/80 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
           {/* Previous Button */}
           {lightboxImages.length > 1 && (
@@ -702,9 +763,9 @@ export default function CreateClient() {
                 e.stopPropagation();
                 prevImage();
               }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white z-10 p-2"
+              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm rounded-full p-3 text-white/80 hover:text-white hover:bg-black/60 z-10 transition-all"
             >
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
@@ -717,9 +778,9 @@ export default function CreateClient() {
                 e.stopPropagation();
                 nextImage();
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white z-10 p-2"
+              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/40 backdrop-blur-sm rounded-full p-3 text-white/80 hover:text-white hover:bg-black/60 z-10 transition-all"
             >
-              <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -727,31 +788,42 @@ export default function CreateClient() {
 
           {/* Image */}
           <div
-            className="relative max-w-4xl max-h-[90vh] w-full aspect-[9/16]"
+            className="relative max-w-4xl max-h-[85vh] w-full aspect-[9/16]"
             onClick={(e) => e.stopPropagation()}
           >
             <Image
-              src={lightboxImages[lightboxIndex]}
-              alt={`Image ${lightboxIndex + 1} of ${lightboxImages.length}`}
+              src={lightboxImages[lightboxIndex]?.url}
+              alt={lightboxImages[lightboxIndex]?.label || 'Design'}
               fill
               className="object-contain"
+              priority
             />
           </div>
 
-          {/* Indicator */}
+          {/* Bottom Thumbnails */}
           {lightboxImages.length > 1 && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-              {lightboxImages.map((_, idx) => (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/60 backdrop-blur-sm p-2 rounded-lg">
+              {lightboxImages.map((img, idx) => (
                 <button
                   key={idx}
                   onClick={(e) => {
                     e.stopPropagation();
                     setLightboxIndex(idx);
                   }}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    idx === lightboxIndex ? 'bg-white' : 'bg-white/40'
+                  className={`relative w-12 h-16 rounded overflow-hidden transition-all ${
+                    idx === lightboxIndex
+                      ? 'ring-2 ring-white scale-105'
+                      : 'opacity-60 hover:opacity-100'
                   }`}
-                />
+                >
+                  <Image
+                    src={img.url}
+                    alt={img.label}
+                    fill
+                    className="object-cover"
+                    sizes="48px"
+                  />
+                </button>
               ))}
             </div>
           )}

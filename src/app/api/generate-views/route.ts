@@ -3,17 +3,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { getSupabase, getWorkspaceBySlug } from '@/lib/supabase';
 import {
   getObjectAsBase64,
-  getObjectFromR2,
-  uploadBase64ToR2,
   uploadBufferToR2,
   generateR2Key,
-  getPublicUrl,
 } from '@/lib/r2';
 import { generateWithReference } from '@/lib/gemini';
-import { constructHeroPrompt } from '@/lib/prompts/hero-prompt';
 import { buildGhostMannequinPrompt, buildFlatLayPrompt } from '@/lib/prompts/garment-spec';
 import { splitTriptych } from '@/lib/image';
-import { annotateImage } from '@/lib/gemini';
 import type { ViewStyle } from '@/types';
 
 export const maxDuration = 300; // 5 minutes
@@ -70,52 +65,10 @@ export async function POST(request: NextRequest) {
       : 'Fashion garment design with high-end editorial quality.';
 
     // ============================
-    // STEP 1: Generate Hero Shot
+    // Generate Garment Spec Sheet (Triptych) - 3-view only
+    // Hero is already the main output.url, no need to regenerate
     // ============================
-    console.log('[generate-views] Step 1: Hero shot generation...');
-
-    const heroPromptResult = constructHeroPrompt(designPrompt);
-    const heroImage = await generateWithReference(
-      heroPromptResult.prompt,
-      referenceBase64,
-      referenceMime
-    );
-
-    if (!heroImage) {
-      return NextResponse.json(
-        { error: 'Hero shot generation failed' },
-        { status: 500 }
-      );
-    }
-
-    // Save hero image
-    const heroAssetId = uuidv4();
-    const heroR2Key = generateR2Key(workspaceSlug, 'gen', heroAssetId, 'png');
-    const heroUrl = await uploadBase64ToR2(heroR2Key, heroImage.base64, heroImage.mimeType);
-
-    await supabase.from('assets').insert({
-      id: heroAssetId,
-      workspace_id: workspace.id,
-      kind: 'generated',
-      source: 'generated',
-      status: 'ready',
-      r2_key: heroR2Key,
-      mime: heroImage.mimeType,
-      metadata: {
-        type: 'hero_shot',
-        sourceAssetId: assetId,
-        heroStyle: heroPromptResult.styleKey,
-        heroStyleName: heroPromptResult.styleName,
-      },
-    });
-
-    // ============================
-    // STEP 2: Generate Garment Spec Sheet (Triptych)
-    // ============================
-    console.log(`[generate-views] Step 2: Garment spec sheet (${viewStyle})...`);
-
-    // Rate limit delay between requests
-    await new Promise((resolve) => setTimeout(resolve, 7000));
+    console.log(`[generate-views] Generating garment spec sheet (${viewStyle})...`);
 
     const specPrompt = viewStyle === 'ghost'
       ? buildGhostMannequinPrompt(designPrompt)
@@ -128,14 +81,10 @@ export async function POST(request: NextRequest) {
     );
 
     if (!specImage) {
-      // Return hero only if spec fails
-      return NextResponse.json({
-        success: true,
-        heroAssetId,
-        heroUrl,
-        garmentViews: null,
-        error: 'Garment spec sheet generation failed, hero shot only',
-      });
+      return NextResponse.json(
+        { error: 'Garment spec sheet generation failed' },
+        { status: 500 }
+      );
     }
 
     // ============================
@@ -185,8 +134,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      heroAssetId,
-      heroUrl,
       garmentViews: {
         frontAssetId: panelResults.front.assetId,
         frontUrl: panelResults.front.url,
@@ -194,6 +141,7 @@ export async function POST(request: NextRequest) {
         sideUrl: panelResults.side.url,
         backAssetId: panelResults.back.assetId,
         backUrl: panelResults.back.url,
+        viewStyle,
       },
     });
   } catch (error) {
